@@ -1,9 +1,10 @@
 var express = require('express');
 var User = require('../models/user');
 var Room = require('../models/room');
+var Message = require('../models/message');
 var router = express.Router();
 
-router.get('/id/:id', function () {
+router.get('/id/:id', function (req, res) {
   if (!(req.user || req.params.id)) {
     return false;
   }
@@ -11,41 +12,44 @@ router.get('/id/:id', function () {
   var selfId = req.user.sub;
   var lookingRoomId = req.params.id;
 
-  User
-    .findById(selfId)
-    .exec(function (err, userCollection) {
+  Room
+    .findById(lookingRoomId)
+    .populate('participants')
+    .exec(function (err, room) {
       if (err) {
         return false;
       }
 
-      Room
-        .findById(lookingRoomId)
-        .exec(function (err, roomCollection) {
-          if (err || !roomCollection) {
-            return false;
-          }
+      var isAvailable = room.participants.find(function (partner) { return partner._id === selfId});
 
-          if (roomCollection.participants.indexOf(userCollection._id) === -1) {
-            return false;
-          }
+      if (!isAvailable) {
+        res.status(401).send();
+        return false;
+      }
 
-          res.send(roomCollection);
-        });
+      res.send(room);
     });
 });
 
-router.post('/new', function (req, res) {
-  var participants = req.body.participants;
-  var name = req.body.name || participants.join(', ');
+router.get('/id/:id/messages', function (req, res) {
+  if (!(req.user || req.params.id)) {
+    return false;
+  }
 
-  Room.create({
-    participants: participants,
-    name: name
-  }, function (err) {
-    if (!err) {
-      res.status(200).send();
-    }
-  })
+  var selfId = req.user.sub;
+  var lookingRoomId = req.params.id;
+
+  Message.getMessagesByRoomId(lookingRoomId, function (messages) {
+    res.send(messages);
+  });
+});
+
+router.get('/myRooms', function (req, res) {
+  var selfId = req.user.sub;
+
+  Room.getRoomsByUserId(selfId, function (rooms) {
+    res.send(rooms);
+  });
 });
 
 module.exports = router;

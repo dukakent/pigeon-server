@@ -29,22 +29,23 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('../pigeon/dist'));
 
-app.use(/^(\/|\/search|\/signin|\/invite)$/, function (req, res) {
-  var indexPath = path.resolve( '../pigeon/dist/index.html');
-  res.sendFile(indexPath);
-});
-
 app.use('/api/user', authGuard, userRoutes);
 app.use('/api/partner', authGuard, partnerRoutes);
 app.use('/api/room', authGuard, roomRoutes);
 app.use('/api/invite', authGuard, inviteRoutes);
 
-io.sockets
-  .on('connection', socketioJwt.authorize({
-    secret: process.env.AUTH0_CLIENT_SECRET,
-    timeout: 15000
-  }))
-  .on('authenticated', ws.onUserConnect);
+app.use(function (req, res) {
+  var indexPath = path.resolve( '../pigeon/dist/index.html');
+  res.sendFile(indexPath);
+});
+
+io.sockets.on('connection', socketioJwt.authorize({
+  secret: process.env.AUTH0_CLIENT_SECRET,
+  timeout: 15000
+}));
+
+ws.init(io);
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

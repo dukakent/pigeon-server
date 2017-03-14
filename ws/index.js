@@ -1,13 +1,22 @@
 var User = require('../models/user');
 var Partnership = require('../models/partnership');
+var Room = require('../models/room');
+var Message = require('../models/message');
 var Invite = require('../models/partnerInvite');
 
 module.exports = (function () {
-  var public = {};
+  var forExport = {};
 
   var connectedPeople = {};
 
-  public.onUserConnect = function (socket) {
+  var io = null;
+
+  forExport.init = function (newIo) {
+    io = newIo;
+    io.sockets.on('authenticated', onAuth)
+  };
+
+   function onAuth(socket) {
     var selfId = socket.decoded_token.sub;
     connectedPeople[selfId] = socket;
 
@@ -22,9 +31,14 @@ module.exports = (function () {
         socket.on('invite/approve', onApproveInvite(selfUser));
         socket.on('invite/reject', onRejectInvite(selfUser));
         socket.on('partner/remove', onPartnerRemove(selfUser));
+        socket.on('message/new', onMessageNew(selfUser));
         socket.on('disconnect', onUserDisconnect(selfUser));
       });
-  }
+
+    Room.getRoomsByUserId(selfId, function (rooms) {
+        rooms.forEach(function (room) { socket.join(room._id); });
+      })
+  };
 
   function onApproveInvite(invitee) {
     return function (inviteId) {
@@ -56,10 +70,20 @@ module.exports = (function () {
 
               inviteeSocket && inviteeSocket.emit('partner/new', invite.from);
               inviterSocket && inviterSocket.emit('partner/new', invite.to);
+
+              Room.create({
+                name: invite.from.name + ', ' + invite.to.name,
+                participants: [invite.from._id, invite.to._id]
+              }, function (err, data) {
+                inviteeSocket && inviteeSocket.emit('room/new', data);
+                inviterSocket && inviterSocket.emit('room/new', data);
+              });
             }
 
             invite.remove();
           });
+
+
         });
     }
   }
@@ -130,11 +154,24 @@ module.exports = (function () {
     }
   }
 
+  function onMessageNew(sender) {
+    return function (message) {
+       Message
+         .create(message, function (err, mess) {
+           var senderSocket = connectedPeople[sender._id];
+
+           Message.populate(mess, 'room sender', function (err, message) {
+             io.in(message.room._id).emit('message/new', message);
+           });
+         })
+    }
+  }
+
   function onUserDisconnect(user) {
     return function () {
       delete connectedPeople[user._id];
     }
   }
 
-  return public;
+  return forExport;
 })();

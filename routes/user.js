@@ -77,18 +77,4 @@ router.get('/search', function (req, res, next) {
     });
 });
 
-router.get('/rooms', function (req, res) {
-  var selfId = req.user.sub;
-
-  Room
-    .find({ participants: selfId })
-    .exec(function (err, rooms) {
-      if (err) {
-        return false;
-      }
-
-      res.send(rooms);
-    });
-});
-
 module.exports = router;
