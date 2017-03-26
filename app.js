@@ -17,7 +17,7 @@ app.set('port', port);
 
 dotenv.load();
 
-mongoose.connect('mongodb://duka:1234@ds143330.mlab.com:43330/pigeon');
+mongoose.connect('mongodb://duka:1234@ds137550.mlab.com:37550/pigeon');
 mongoose.connect('mongodb://localhost/pigeon');
 
 var authGuard = require('./authGuard');
