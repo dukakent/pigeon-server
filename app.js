@@ -29,7 +29,7 @@ var inviteRoutes = require('./routes/invite');
 app.use(logger('dev'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(express.static('../pigeon/dist'));
+app.use(express.static('./public'));
 
 app.use('/api/user', authGuard, userRoutes);
 app.use('/api/partner', authGuard, partnerRoutes);
@@ -37,7 +37,7 @@ app.use('/api/room', authGuard, roomRoutes);
 app.use('/api/invite', authGuard, inviteRoutes);
 
 app.use(function (req, res) {
-  var indexPath = path.resolve( '../pigeon/dist/index.html');
+  var indexPath = path.resolve( './public/index.html');
   res.sendFile(indexPath);
 });
 
