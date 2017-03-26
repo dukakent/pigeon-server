@@ -16,6 +16,8 @@ var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
 dotenv.load();
+
+mongoose.connect('mongodb://dukakent:1234@ds143330.mlab.com:43330/pigeon');
 mongoose.connect('mongodb://localhost/pigeon');
 
 var authGuard = require('./authGuard');
@@ -25,8 +27,8 @@ var roomRoutes = require('./routes/room');
 var inviteRoutes = require('./routes/invite');
 
 app.use(logger('dev'));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('../pigeon/dist'));
 
 app.use('/api/user', authGuard, userRoutes);

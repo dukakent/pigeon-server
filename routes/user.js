@@ -4,6 +4,11 @@ var Room = require('../models/room');
 var router = express.Router();
 
 router.post('/', function (req, res) {
+  if (!req.body._id) {
+    console.log(req.body);
+    res.status(404).send();
+  }
+
   User
     .findByIdAndUpdate(
       req.body.user_id,
