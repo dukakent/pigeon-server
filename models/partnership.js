@@ -5,7 +5,8 @@ var partnershipSchema = new Schema({
   partners: {
     type: [{ type: String, ref: 'User' }],
     default: []
-  }
+  },
+  personalRoom: { type: Schema.Types.ObjectId, ref: 'Room' }
 });
 
 partnershipSchema.statics.getPartnersByUserId = function (id, callback) {

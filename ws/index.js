@@ -54,36 +54,36 @@ module.exports = (function () {
             return false;
           }
 
-          var partnershipQuery = {
-            partners: [
-              invite.from._id,
-              invite.to._id
-            ]
-          };
 
-          Partnership.findOne(partnershipQuery, function (err, partnership) {
-            if (!partnership) {
-              Partnership.create(partnershipQuery);
+          Room.create({
+            name: invite.from.name + ', ' + invite.to.name,
+            participants: [invite.from._id, invite.to._id]
+          }, function (err, newRoom) {
+            var inviteeSocket = connectedPeople[invite.to._id];
+            var inviterSocket = connectedPeople[invite.from._id];
 
-              var inviteeSocket = connectedPeople[invite.to._id];
-              var inviterSocket = connectedPeople[invite.from._id];
+            var partnershipQuery = {
+              partners: [
+                invite.from._id,
+                invite.to._id
+              ],
+              personalRoom: newRoom._id
+            };
 
-              inviteeSocket && inviteeSocket.emit('partner/new', invite.from);
-              inviterSocket && inviterSocket.emit('partner/new', invite.to);
+            inviteeSocket && inviteeSocket.emit('room/new', newRoom);
+            inviterSocket && inviterSocket.emit('room/new', newRoom);
 
-              Room.create({
-                name: invite.from.name + ', ' + invite.to.name,
-                participants: [invite.from._id, invite.to._id]
-              }, function (err, data) {
-                inviteeSocket && inviteeSocket.emit('room/new', data);
-                inviterSocket && inviterSocket.emit('room/new', data);
-              });
-            }
+            Partnership.findOne(partnershipQuery, function (err, partnership) {
+              if (!partnership) {
+                Partnership.create(partnershipQuery);
 
-            invite.remove();
+                inviteeSocket && inviteeSocket.emit('partner/new', invite.from);
+                inviterSocket && inviterSocket.emit('partner/new', invite.to);
+              }
+
+              invite.remove();
+            });
           });
-
-
         });
     }
   }
@@ -118,18 +118,26 @@ module.exports = (function () {
         })
         .populate('partners')
         .exec(function (err, partnership) {
-
           var initiatee = partnership.partners.find(function (partner) {
             return partner._id === initiateeId;
           });
 
           var initiateeSocket = connectedPeople[initiatee._id];
+          var initiatorSocket = connectedPeople[initiator._id];
 
           if (initiateeSocket) {
             initiateeSocket.emit('partner/remove', initiator._id);
+            initiateeSocket.emit('room/remove', partnership.personalRoom._id);
           }
 
-          partnership.remove();
+          if (initiatorSocket) {
+            initiateeSocket.emit('room/remove', partnership.personalRoom._id);
+          }
+
+          Room.findById(partnership.personalRoom).exec(function (err, data) {
+            data.remove();
+            partnership.remove();
+          });
         });
     }
   }
@@ -147,7 +155,9 @@ module.exports = (function () {
           var invitineeSocket = connectedPeople[inviteeId];
 
           if (invitineeSocket) {
-            invitineeSocket.emit('invite', newInvite);
+            Invite.populate(newInvite, 'from to', function () {
+              invitineeSocket.emit('invite', newInvite);
+            });
           }
         });
       });
