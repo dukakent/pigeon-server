@@ -33,6 +33,7 @@ module.exports = (function () {
         socket.on('partner/remove', onPartnerRemove(selfUser));
         socket.on('message/new', onMessageNew(selfUser));
         socket.on('disconnect', onUserDisconnect(selfUser));
+        socket.on('rtc', onRTC(selfUser));
       });
 
     Room.getRoomsByUserId(selfId, function (rooms) {
@@ -180,6 +181,13 @@ module.exports = (function () {
   function onUserDisconnect(user) {
     return function () {
       delete connectedPeople[user._id];
+    }
+  }
+
+  function onRTC(user) {
+    return function (data) {
+      var socket = connectedPeople[user._id];
+      socket.to(data.roomId).emit('rtc', data);
     }
   }
 
